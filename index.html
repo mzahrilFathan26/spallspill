@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Galeri Kenangan — Mac Aesthetic</title>
+  <meta name="description" content="Galeri foto & video bergaya Mac Aesthetic — grid responsif, preview fullscreen, animasi zoom seperti app gallery." />
+  <style>
+    /* ======= Mac Aesthetic Gallery (single-file) ======= */
+    :root{
+      --bg:#f5f5f7; /* very light gray */
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#0f172a; /* deep slate for headings */
+      --glass: rgba(255,255,255,0.7);
+      --shadow: 0 8px 30px rgba(15,23,42,0.06);
+      --soft-shadow: 0 6px 18px rgba(15,23,42,0.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Poppins', 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(180deg,var(--bg),#ffffff);color:var(--accent);-webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    header{
+      position:sticky;top:0;z-index:60;padding:18px 24px;background:rgba(255,255,255,0.6);backdrop-filter:blur(8px);border-bottom:1px solid rgba(15,23,42,0.04);display:flex;align-items:center;justify-content:space-between;gap:1rem
+    }
+    .brand{display:flex;flex-direction:column}
+    .brand h1{font-size:1.05rem;margin:0;font-weight:700;color:var(--accent)}
+    .brand p{margin:0;font-size:0.82rem;color:var(--muted)}
+
+    .controls{display:flex;gap:.6rem;align-items:center}
+    .btn{background:linear-gradient(180deg,var(--card),#fbfbfc);border:1px solid rgba(15,23,42,0.06);padding:8px 12px;border-radius:10px;box-shadow:var(--soft-shadow);cursor:pointer;font-weight:600;color:var(--accent)}
+    .btn.ghost{background:transparent;border:1px solid rgba(15,23,42,0.06)}
+
+    main{max-width:1200px;margin:20px auto;padding:0 20px}
+
+    /* GRID (masonry-like feel) */
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+    .item{background:var(--card);border-radius:12px;overflow:hidden;position:relative;cursor:pointer;box-shadow:var(--shadow);transition:transform .38s cubic-bezier(.2,.9,.2,1),box-shadow .25s}
+    .item:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(15,23,42,0.08)}
+    .thumb{width:100%;height:160px;display:block;object-fit:cover;background:#eef2f6}
+    .meta{padding:10px 12px;border-top:1px solid rgba(15,23,42,0.03);text-align:center}
+    .meta .title{font-size:0.92rem;font-weight:700;color:var(--accent)}
+    .meta .subtitle{font-size:0.78rem;color:var(--muted);margin-top:6px}
+
+    /* PREVIEW (fullscreen) */
+    .preview{display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center}
+    .preview.open{display:flex}
+
+    .preview-backdrop{position:absolute;inset:0;background:rgba(12,14,18,0.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+
+    .preview-stage{position:relative;z-index:10;max-width:1200px;width:min(94%,1200px);max-height:86vh;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 30px 80px rgba(12,14,18,0.45);background:linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,250,250,0.98))}
+
+    .preview-media{max-width:100%;max-height:82vh;display:block}
+    .preview-img{display:block;width:100%;height:auto}
+    .preview-video{width:100%;height:auto}
+
+    /* controls inside preview */
+    .preview-close{position:absolute;top:12px;right:12px;border-radius:10px;padding:8px;background:rgba(255,255,255,0.8);border:1px solid rgba(15,23,42,0.06);cursor:pointer;font-weight:700}
+    .preview-nav{position:absolute;top:50%;transform:translateY(-50%);font-size:28px;padding:12px;border-radius:999px;background:rgba(255,255,255,0.85);border:1px solid rgba(15,23,42,0.06);cursor:pointer}
+    .preview-prev{left:14px}
+    .preview-next{right:14px}
+
+    /* caption */
+    .caption{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;background:rgba(255,255,255,0.9);padding:8px 12px;border-radius:999px;border:1px solid rgba(15,23,42,0.04);font-size:0.9rem;color:var(--accent)}
+
+    /* animations: origin-zoom (from thumb to center) */
+    .preview-stage.entering{transition:transform .45s cubic-bezier(.2,.9,.2,1),opacity .35s ease;transform-origin:var(--origin);transform:translate(var(--tx),var(--ty)) scale(var(--s));opacity:0}
+    .preview-stage.entering.opened{transform:translate(0,0) scale(1);opacity:1}
+    .preview-stage.leaving{transition:transform .35s cubic-bezier(.2,.9,.2,1),opacity .25s ease;transform-origin:var(--origin);opacity:0}
+
+    /* responsive tweaks */
+    @media (max-width:900px){.thumb{height:140px}.preview-stage{max-width:94%}} 
+    @media (max-width:600px){.thumb{height:120px}.preview-nav{display:none}}
+
+    /* subtle loading shimmer for images */
+    .shimmer{background:linear-gradient(90deg, #f3f4f6 0%, #eceff1 50%, #f3f4f6 100%);background-size:200% 100%;animation:sh .9s linear infinite}
+    @keyframes sh{from{background-position:200% 0}to{background-position:-200% 0}}
+
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Galeri Kenangan</h1>
+      <p>Mac Aesthetic · Foto & Video</p>
+    </div>
+    <div class="controls">
+      <button class="btn ghost" id="btnDownloadMeta">Export JSON</button>
+      <button class="btn" id="btnAddNote">Tambah Catatan</button>
+    </div>
+  </header>
+
+  <main>
+    <div style="max-width:1200px;margin:18px auto;padding:0 20px">
+      <section class="gallery" id="gallery" aria-live="polite"></section>
+    </div>
+  </main>
+
+  <!-- PREVIEW LAYER -->
+  <div class="preview" id="preview" aria-hidden="true">
+    <div class="preview-backdrop" id="previewBackdrop"></div>
+    <div class="preview-stage entering" id="previewStage" role="dialog" aria-modal="true">
+      <button class="preview-close" id="previewClose">✕</button>
+      <button class="preview-nav preview-prev" id="previewPrev">‹</button>
+      <button class="preview-nav preview-next" id="previewNext">›</button>
+
+      <img id="previewImg" class="preview-media preview-img" alt="Preview image" style="display:none" />
+      <video id="previewVid" class="preview-media preview-video" controls style="display:none"></video>
+
+      <div class="caption" id="previewCaption" style="display:none"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ===== mediaFiles (edit this file to add/remove media) ===== */
+const mediaFiles = [
+  { type: 'image', src: 'media/fot1 (1).jpg', title: 'Foto Kenangan 1' },
+  { type: 'image', src: 'media/fot1 (2).jpg', title: 'Foto Kenangan 2' },
+  { type: 'image', src: 'media/fot1 (3).jpg', title: 'Foto Kenangan 3' },
+  { type: 'image', src: 'media/fot1 (4).jpg', title: 'Foto Kenangan 4' },
+  { type: 'image', src: 'media/fot1 (5).jpg', title: 'Foto Kenangan 5' },
+  { type: 'image', src: 'media/fot1 (6).jpg', title: 'Foto Kenangan 6' },
+  { type: 'image', src: 'media/fot1 (7).jpg', title: 'Foto Kenangan 7' },
+  { type: 'image', src: 'media/fot1 (8).jpg', title: 'Foto Kenangan 8' },
+  { type: 'image', src: 'media/fot1 (9).jpg', title: 'Foto Kenangan 9' },
+  { type: 'image', src: 'media/fot1 (10).jpg', title: 'Foto Kenangan 10' },
+  { type: 'image', src: 'media/fot1 (11).jpg', title: 'Foto Kenangan 11' },
+  { type: 'image', src: 'media/fot1 (12).jpg', title: 'Foto Kenangan 12' },
+  { type: 'image', src: 'media/fot1 (13).jpg', title: 'Foto Kenangan 13' },
+  { type: 'image', src: 'media/fot1 (14).jpg', title: 'Foto Kenangan 14' },
+  { type: 'image', src: 'media/fot1 (15).jpg', title: 'Foto Kenangan 15' },
+  { type: 'image', src: 'media/fot1 (16).jpg', title: 'Foto Kenangan 16' },
+  { type: 'image', src: 'media/fot1 (17).jpg', title: 'Foto Kenangan 17' },
+  { type: 'image', src: 'media/fot1 (18).jpg', title: 'Foto Kenangan 18' },
+  { type: 'image', src: 'media/fot1 (19).jpg', title: 'Foto Kenangan 19' },
+  { type: 'image', src: 'media/fot1 (20).jpg', title: 'Foto Kenangan 20' },
+  { type: 'image', src: 'media/fot1 (21).jpg', title: 'Foto Kenangan 21' },
+  { type: 'image', src: 'media/fot1 (22).jpg', title: 'Foto Kenangan 22' },
+  { type: 'image', src: 'media/fot1 (23).jpg', title: 'Foto Kenangan 23' },
+  { type: 'image', src: 'media/fot1 (24).jpg', title: 'Foto Kenangan 24' },
+  { type: 'image', src: 'media/fot1 (25).jpg', title: 'Foto Kenangan 25' },
+  { type: 'image', src: 'media/fot1 (26).jpg', title: 'Foto Kenangan 26' },
+  { type: 'image', src: 'media/fot1 (27).jpg', title: 'Foto Kenangan 27' },
+  { type: 'image', src: 'media/fot1 (28).jpg', title: 'Foto Kenangan 28' },
+  { type: 'image', src: 'media/fot1 (29).jpg', title: 'Foto Kenangan 29' },
+  { type: 'image', src: 'media/fot1 (30).jpg', title: 'Foto Kenangan 30' },
+  { type: 'image', src: 'media/fot1 (31).jpg', title: 'Foto Kenangan 31' },
+  { type: 'image', src: 'media/fot1 (32).jpg', title: 'Foto Kenangan 32' },
+  { type: 'image', src: 'media/fot1 (33).jpg', title: 'Foto Kenangan 33' },
+  { type: 'image', src: 'media/fot1 (34).jpg', title: 'Foto Kenangan 34' },
+  { type: 'image', src: 'media/fot1 (35).jpg', title: 'Foto Kenangan 35' },
+  { type: 'image', src: 'media/fot1 (36).jpg', title: 'Foto Kenangan 36' },
+  { type: 'image', src: 'media/fot1 (37).jpg', title: 'Foto Kenangan 37' },
+  { type: 'image', src: 'media/fot1 (38).jpg', title: 'Foto Kenangan 38' },
+  { type: 'image', src: 'media/fot1 (39).jpg', title: 'Foto Kenangan 39' },
+  { type: 'image', src: 'media/fot1 (40).jpg', title: 'Foto Kenangan 40' },
+  { type: 'image', src: 'media/fot1 (41).jpg', title: 'Foto Kenangan 41' },
+  { type: 'image', src: 'media/fot1 (42).jpg', title: 'Foto Kenangan 42' },
+  { type: 'image', src: 'media/fot1 (43).jpg', title: 'Foto Kenangan 43' },
+  { type: 'image', src: 'media/fot1 (44).jpg', title: 'Foto Kenangan 44' },
+  { type: 'image', src: 'media/fot1 (45).jpg', title: 'Foto Kenangan 45' },
+  { type: 'image', src: 'media/fot1 (46).jpg', title: 'Foto Kenangan 46' },
+  { type: 'image', src: 'media/fot1 (47).jpg', title: 'Foto Kenangan 47' },
+  { type: 'image', src: 'media/fot1 (48).jpg', title: 'Foto Kenangan 48' },
+  { type: 'image', src: 'media/fot1 (49).jpg', title: 'Foto Kenangan 49' },
+  { type: 'image', src: 'media/fot1 (50).jpg', title: 'Foto Kenangan 50' },
+  { type: 'image', src: 'media/fot1 (51).jpg', title: 'Foto Kenangan 51' },
+  { type: 'image', src: 'media/fot1 (52).jpg', title: 'Foto Kenangan 52' },
+  { type: 'image', src: 'media/fot1 (53).jpg', title: 'Foto Kenangan 53' },
+  { type: 'image', src: 'media/fot1 (54).jpg', title: 'Foto Kenangan 54' },
+  { type: 'image', src: 'media/fot1 (55).jpg', title: 'Foto Kenangan 55' },
+  { type: 'image', src: 'media/fot1 (56).jpg', title: 'Foto Kenangan 56' },
+  { type: 'image', src: 'media/fot1 (57).jpg', title: 'Foto Kenangan 57' },
+  { type: 'image', src: 'media/fot1 (58).jpg', title: 'Foto Kenangan 58' },
+  { type: 'image', src: 'media/fot1 (59).jpg', title: 'Foto Kenangan 59' },
+  { type: 'image', src: 'media/fot1 (60).jpg', title: 'Foto Kenangan 60' },
+  { type: 'image', src: 'media/fot1 (61).jpg', title: 'Foto Kenangan 61' },
+  { type: 'image', src: 'media/fot1 (62).jpg', title: 'Foto Kenangan 62' },
+  { type: 'image', src: 'media/fot1 (63).jpg', title: 'Foto Kenangan 63' },
+  { type: 'image', src: 'media/fot1 (64).jpg', title: 'Foto Kenangan 64' },
+  { type: 'image', src: 'media/fot1 (65).jpg', title: 'Foto Kenangan 65' },
+  { type: 'image', src: 'media/fot1 (66).jpg', title: 'Foto Kenangan 66' },
+  { type: 'image', src: 'media/fot1 (67).jpg', title: 'Foto Kenangan 67' },
+  { type: 'image', src: 'media/fot1 (68).jpg', title: 'Foto Kenangan 68' },
+  { type: 'image', src: 'media/fot1 (69).jpg', title: 'Foto Kenangan 69' },
+  { type: 'image', src: 'media/fot1 (70).jpg', title: 'Foto Kenangan 70' },
+  { type: 'image', src: 'media/fot1 (71).jpg', title: 'Foto Kenangan 71' },
+  { type: 'image', src: 'media/fot1 (72).jpg', title: 'Foto Kenangan 72' },
+  { type: 'image', src: 'media/fot1 (73).jpg', title: 'Foto Kenangan 73' },
+  { type: 'image', src: 'media/fot1 (74).jpg', title: 'Foto Kenangan 74' },
+  { type: 'image', src: 'media/fot1 (75).jpg', title: 'Foto Kenangan 75' },
+  { type: 'image', src: 'media/fot1 (76).jpg', title: 'Foto Kenangan 76' },
+  { type: 'image', src: 'media/fot1 (77).jpg', title: 'Foto Kenangan 77' },
+  { type: 'image', src: 'media/fot1 (78).jpg', title: 'Foto Kenangan 78' },
+  { type: 'image', src: 'media/fot1 (79).jpg', title: 'Foto Kenangan 79' },
+  { type: 'image', src: 'media/fot1 (80).jpg', title: 'Foto Kenangan 80' },
+  { type: 'image', src: 'media/fot1 (81).jpg', title: 'Foto Kenangan 81' },
+  { type: 'image', src: 'media/fot1 (82).jpg', title: 'Foto Kenangan 82' },
+  { type: 'image', src: 'media/fot1 (83).jpg', title: 'Foto Kenangan 83' },
+  { type: 'image', src: 'media/fot1 (84).jpg', title: 'Foto Kenangan 84' },
+  { type: 'image', src: 'media/fot1 (85).jpg', title: 'Foto Kenangan 85' },
+  { type: 'image', src: 'media/fot1 (86).jpg', title: 'Foto Kenangan 86' },
+  { type: 'image', src: 'media/fot1 (87).jpg', title: 'Foto Kenangan 87' },
+  { type: 'image', src: 'media/fot1 (88).jpg', title: 'Foto Kenangan 88' },
+  { type: 'image', src: 'media/fot1 (89).jpg', title: 'Foto Kenangan 89' },
+  { type: 'image', src: 'media/fot1 (90).jpg', title: 'Foto Kenangan 90' },
+  { type: 'image', src: 'media/fot1 (91).jpg', title: 'Foto Kenangan 91' },
+  { type: 'image', src: 'media/fot1 (92).jpg', title: 'Foto Kenangan 92' },
+  { type: 'image', src: 'media/fot1 (93).jpg', title: 'Foto Kenangan 93' },
+  { type: 'image', src: 'media/fot1 (94).jpg', title: 'Foto Kenangan 94' },
+  { type: 'image', src: 'media/fot1 (95).jpg', title: 'Foto Kenangan 95' },
+  { type: 'image', src: 'media/fot1 (96).jpg', title: 'Foto Kenangan 96' },
+  { type: 'image', src: 'media/fot1 (97).jpg', title: 'Foto Kenangan 97' }
+];
+
+
+    /* ===== app logic ===== */
+    const gallery = document.getElementById('gallery');
+    const preview = document.getElementById('preview');
+    const previewStage = document.getElementById('previewStage');
+    const previewImg = document.getElementById('previewImg');
+    const previewVid = document.getElementById('previewVid');
+    const previewClose = document.getElementById('previewClose');
+    const previewPrev = document.getElementById('previewPrev');
+    const previewNext = document.getElementById('previewNext');
+    const previewBackdrop = document.getElementById('previewBackdrop');
+    const previewCaption = document.getElementById('previewCaption');
+    const btnDownloadMeta = document.getElementById('btnDownloadMeta');
+
+    let currentIndex = 0;
+    let isAnimating = false;
+
+    // render gallery
+    function renderGallery(){
+      gallery.innerHTML = '';
+      mediaFiles.forEach((m, i) => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.dataset.index = i;
+
+        // thumb element
+        if (m.type === 'image'){
+          const img = document.createElement('img'); img.className='thumb shimmer'; img.alt = m.title || m.src; img.loading='lazy';
+          img.src = m.src;
+          img.addEventListener('load', ()=> img.classList.remove('shimmer'));
+          el.appendChild(img);
+        } else {
+          const vid = document.createElement('video'); vid.className='thumb'; vid.src = m.src; vid.muted=true; vid.loop=true; vid.playsInline=true; vid.autoplay=true; vid.preload='metadata';
+          el.appendChild(vid);
+        }
+
+        const meta = document.createElement('div'); meta.className='meta';
+        const title = document.createElement('div'); title.className='title'; title.textContent = m.title || '';
+        const sub = document.createElement('div'); sub.className='subtitle'; sub.textContent = m.type.toUpperCase();
+        meta.appendChild(title); meta.appendChild(sub);
+        el.appendChild(meta);
+
+        el.addEventListener('click', (ev)=> openPreviewFromThumb(i, ev.currentTarget));
+        gallery.appendChild(el);
+      });
+    }
+
+    function openPreviewFromThumb(index, thumbEl){
+      if (isAnimating) return; // prevent spam
+      currentIndex = index;
+      const media = mediaFiles[index];
+
+      // compute thumbnail rect and center delta for nice origin zoom
+      const thumbRect = thumbEl.getBoundingClientRect();
+      const stageRect = previewStage.getBoundingClientRect();
+      const vw = window.innerWidth, vh = window.innerHeight;
+
+      // center of thumb and stage
+      const thumbCx = thumbRect.left + thumbRect.width/2;
+      const thumbCy = thumbRect.top + thumbRect.height/2;
+      const stageCx = stageRect.left + stageRect.width/2;
+      const stageCy = stageRect.top + stageRect.height/2;
+
+      const dx = thumbCx - stageCx;
+      const dy = thumbCy - stageCy;
+
+      // set css custom properties for origin and start transform
+      previewStage.style.setProperty('--origin', 'center center');
+      previewStage.style.setProperty('--tx', dx + 'px');
+      previewStage.style.setProperty('--ty', dy + 'px');
+      previewStage.style.setProperty('--s', '0.22');
+
+      // prepare media
+      previewImg.style.display = 'none'; previewVid.style.display = 'none'; previewCaption.style.display='none';
+      if (media.type === 'image'){
+        previewImg.src = media.src;
+        previewImg.alt = media.title || '';
+      } else {
+        previewVid.src = media.src; previewVid.load();
+      }
+
+      // open preview
+      preview.classList.add('open'); preview.setAttribute('aria-hidden','false');
+      previewStage.classList.add('entering');
+      // force style recalc
+      requestAnimationFrame(()=>{
+        previewStage.classList.add('opened');
+      });
+
+      // after animation ends, show proper media and caption
+      isAnimating = true;
+      setTimeout(()=>{
+        previewStage.classList.remove('entering'); previewStage.classList.remove('opened');
+        previewStage.style.removeProperty('--tx'); previewStage.style.removeProperty('--ty'); previewStage.style.removeProperty('--s');
+        showMedia(media);
+        isAnimating = false;
+      },520);
+    }
+
+    function showMedia(media){
+      if (media.type === 'image'){
+        previewImg.style.display = 'block'; previewVid.style.display = 'none';
+      } else {
+        previewVid.style.display = 'block'; previewImg.style.display = 'none'; previewVid.play();
+      }
+      previewCaption.textContent = media.title || '';
+      previewCaption.style.display = media.title? 'block':'none';
+    }
+
+    function closePreview(){
+      if (isAnimating) return;
+      // animate back: set leaving class then hide
+      previewStage.classList.add('leaving');
+      preview.classList.remove('open'); preview.setAttribute('aria-hidden','true');
+      previewStage.classList.remove('entering');
+      setTimeout(()=>{
+        previewStage.classList.remove('leaving');
+        previewImg.src=''; previewVid.pause(); previewVid.src='';
+        preview.style.display = 'none';
+      },320);
+      // immediate hide backdrop
+      preview.style.display = 'none';
+    }
+
+    function showNext(){ currentIndex = (currentIndex + 1) % mediaFiles.length; openPreviewFromThumb(currentIndex, gallery.children[currentIndex]); }
+    function showPrev(){ currentIndex = (currentIndex - 1 + mediaFiles.length) % mediaFiles.length; openPreviewFromThumb(currentIndex, gallery.children[currentIndex]); }
+
+    previewClose.addEventListener('click', closePreview);
+    previewBackdrop.addEventListener('click', closePreview);
+    previewNext.addEventListener('click', (e)=>{ e.stopPropagation(); showNext(); });
+    previewPrev.addEventListener('click', (e)=>{ e.stopPropagation(); showPrev(); });
+
+    // keyboard nav
+    document.addEventListener('keydown', (e)=>{
+      if (preview.classList.contains('open')){
+        if (e.key === 'Escape') closePreview();
+        if (e.key === 'ArrowRight') showNext();
+        if (e.key === 'ArrowLeft') showPrev();
+      }
+    });
+
+    // export metadata
+    btnDownloadMeta.addEventListener('click', ()=>{
+      const data = mediaFiles.map(m=>({src:m.src,type:m.type,title:m.title}));
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'mediaFiles.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // initial render
+    renderGallery();
+
+    // accessibility: focus trap / ensure modal hidden state on load
+    preview.setAttribute('aria-hidden','true');
+  </script>
+</body>
+</html>
